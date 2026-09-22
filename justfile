@@ -31,14 +31,14 @@ default:
 
 # Install all dependencies for .claude
 install:
+    just install-utils
     bun install
     uv sync --all-extras --dev
-    just install-utils
 
 # Install CLI utilities (skipped in CI)
 [script]
 install-utils:
-    if [ "$CI" = "true" ]; then
+    if [ "${CI:-}" = "true" ]; then
         echo "Skipping brew install in CI environment"
     else
         brew install bat delta eza fd fzf gh gum jq just rg ruff uv yq

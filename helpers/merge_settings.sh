@@ -25,7 +25,7 @@ cd "$HOME/.claude"
 
 # Find all .json and .jsonc files in settings/ directory (excluding settings.json)
 # Files are sorted alphabetically to ensure consistent merge order
-settings_files=$(fd --type f -e jsonc -e json . settings/ --exclude settings.json | sort)
+settings_files=$(find settings -type f \( -name '*.jsonc' -o -name '*.json' \) ! -name settings.json | sort)
 
 if [ -z "$settings_files" ]; then
     echo "No settings files found in settings/ directory"
