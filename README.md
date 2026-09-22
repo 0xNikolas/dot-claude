@@ -8,7 +8,7 @@ PRB's personal Claude Code config, mounted at `~/.claude`.
 ## Quick Start
 
 ```bash
-git clone git@github.com:PaulRBerg/dot-claude.git ~/.claude
+git clone git@github.com:0xNikolas/dot-claude.git ~/.claude
 cd ~/.claude
 just install
 ccc  # Make your first commit with the claude wrapper
@@ -27,7 +27,7 @@ See [Installation](#installation) for full setup and [Configuration](#configurat
 ### Setup
 
 ```bash
-git clone git@github.com:PaulRBerg/dot-claude.git ~/.claude
+git clone git@github.com:0xNikolas/dot-claude.git ~/.claude
 cd ~/.claude
 just install  # JS deps, Python deps, and CLI utilities
 ```
@@ -59,7 +59,7 @@ Settings layout:
 ### Context
 
 `CLAUDE.md` is user-level context loaded by Claude Code across all projects. It is generated from
-[PaulRBerg/dot-agents](https://github.com/PaulRBerg/dot-agents)'s `AGENTS.md` — the canonical source — via that repo's
+[0xNikolas/dot-agents](https://github.com/0xNikolas/dot-agents)'s `AGENTS.md` — the canonical source — via that repo's
 Husky + lint-staged pre-commit hook; do not hand-edit it here. Keep repo-specific guidance in project `CLAUDE.md` /
 `AGENTS.md` files.
 
@@ -77,7 +77,7 @@ which enables namespaced patterns like `/yeet:issue-cc` and `/agents-brain:polis
 
 ### Skills
 
-Skills are managed in [PaulRBerg/dot-agents](https://github.com/PaulRBerg/dot-agents) and installed via Vercel's
+Skills are managed in [0xNikolas/dot-agents](https://github.com/0xNikolas/dot-agents) and installed via Vercel's
 [skills CLI](https://github.com/vercel-labs/skills). This repo keeps symlinks from `skills/` to `~/.agents/skills/`. See
 dot-agents for installation guidance.
 
@@ -99,10 +99,10 @@ Active hooks from `settings/hooks.jsonc`:
 
 - **add_plan_frontmatter.py**: add YAML frontmatter to plan files (`PostToolUse`)
 - **ai-coord**: agent coordination via the external
-  [ai-coord](https://github.com/PaulRBerg/agent-toolkit/tree/main/coord) CLI (`PostToolBatch`, `PostToolUseFailure`,
+  [ai-coord](https://github.com/0xNikolas/agent-toolkit/tree/main/coord) CLI (`PostToolBatch`, `PostToolUseFailure`,
   `SessionEnd`, `SessionStart`, `Stop`, `SubagentStart`, `SubagentStop`, `UserPromptSubmit`)
 - **ai-notify**: desktop notifications via the external
-  [ai-notify](https://github.com/PaulRBerg/agent-toolkit/tree/main/notify) CLI (`Notification`, `PermissionRequest`,
+  [ai-notify](https://github.com/0xNikolas/agent-toolkit/tree/main/notify) CLI (`Notification`, `PermissionRequest`,
   `PreToolUse`, `Stop`, `StopFailure`, `UserPromptSubmit`)
 - **copy_prompt_to_clipboard.py**: copy submitted prompts to the macOS clipboard (`UserPromptSubmit`)
 

@@ -27,7 +27,7 @@ Hooks can respond to events like these:
 ## 1. ai-notify (All Events) - Optional
 
 Desktop notifications for Claude Code events via
-[ai-notify](https://github.com/PaulRBerg/agent-toolkit/tree/main/notify).
+[ai-notify](https://github.com/0xNikolas/agent-toolkit/tree/main/notify).
 
 ### Monitored Events
 
@@ -39,7 +39,7 @@ Desktop notifications for Claude Code events via
 
 ### Prerequisites
 
-See [ai-notify repository](https://github.com/PaulRBerg/agent-toolkit/tree/main/notify) for installation instructions.
+See [ai-notify repository](https://github.com/0xNikolas/agent-toolkit/tree/main/notify) for installation instructions.
 
 ### Features
 
@@ -47,7 +47,7 @@ See [ai-notify repository](https://github.com/PaulRBerg/agent-toolkit/tree/main/
 - Configurable notification preferences
 - Works system-wide across all Claude Code sessions
 
-See the [ai-notify repository](https://github.com/PaulRBerg/agent-toolkit/tree/main/notify) for setup instructions and
+See the [ai-notify repository](https://github.com/0xNikolas/agent-toolkit/tree/main/notify) for setup instructions and
 configuration options.
 
 ## 2. copy_prompt_to_clipboard (UserPromptSubmit)
@@ -141,6 +141,6 @@ which ai-notify
 
 ## Resources
 
-- [ai-notify](https://github.com/PaulRBerg/agent-toolkit/tree/main/notify)
+- [ai-notify](https://github.com/0xNikolas/agent-toolkit/tree/main/notify)
 - [Claude Code Hooks Documentation](https://docs.anthropic.com/en/docs/claude-code/hooks) - Official Anthropic
   documentation

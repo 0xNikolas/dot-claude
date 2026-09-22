@@ -124,7 +124,7 @@ class TestMetadataPrefix:
             "_git_output",
             side_effect=[
                 "/tmp/work/.claude",
-                "git@github.com:PaulRBerg/dot-claude.git",
+                "git@github.com:0xNikolas/dot-claude.git",
             ],
         ):
             assert hook.build_metadata_prefix(data) == "[repo:dot-claude session:00893aaf]"
