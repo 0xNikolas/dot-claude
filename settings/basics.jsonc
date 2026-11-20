@@ -2,24 +2,48 @@
   // Basic configuration for Claude Code
   // General settings, environment variables, and UI customization
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "agentPushNotifEnabled": true,
   "alwaysThinkingEnabled": true,
   "autoMemoryEnabled": false,
   // Disable the session recap / away summary shown when returning to a session
   "awaySummaryEnabled": false,
   // We need to set this because 0doesn't work
   "cleanupPeriodDays": 9999,
+  "editorMode": "vim",
   "enableAllProjectMcpServers": true,
   "includeCoAuthoredBy": false,
   "includeGitInstructions": false,
-  "model": "sonnet",
+  "model": "opus",
+  "modelSettings": {
+    "claude-fable-5-2": {
+      "effortLevel": "high",
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "high",
+    },
+  },
+  "remoteControlAtStartup": false,
   "showClearContextOnPlanAccept": true,
   "skillListingBudgetFraction": 0.02,
-  "skipAutoPermissionPrompt": true,
   "skipDangerousModePermissionPrompt": true,
   "spinnerTipsEnabled": true,
+  "teammateMode": "auto",
   "tui": "fullscreen",
-  "useAutoModeDuringPlan": false,
+  "voice": {
+    "enabled": true,
+    "mode": "hold",
+  },
+  // Start every session in bypass mode, including launches without --dangerously-skip-permissions.
+  // ~/.zshenv exports CLAUDE_CODE_EVEN_MORE_DANGEROUSLY_SKIP_PERMISSIONS=1, which also skips the prompt for
+  // rm on critical paths. Claude Code reads it from the launch environment only, never from `env` below, and
+  // ignores it once any deny or ask rule names Bash, Edit, or Read. Keep such rules out of settings/: the
+  // PreToolUse guards in hooks.jsonc enforce them instead.
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+  },
   "env": {
+    // Auto-compact at 80% of the auto-compact window (can only lower the default)
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
     "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
     // Activate MCP tool search when tool definitions exceed 5% of context (default: 10%)
     "ENABLE_TOOL_SEARCH": "auto:5",

@@ -40,15 +40,17 @@ fi
 # The json5 tool allows comments and trailing commas in JSON files
 # Using a single Bun process is much faster than calling bunx per file, and Bun
 # resolves json5 itself (a separate `node` binary can't see bunx's temp install)
-# If a file fails to parse, fall back to empty object
+# If any file fails to parse, name it on stderr and exit non-zero so settings.json is
+# never regenerated from partial input (a dropped file would silently lose rules)
 parsed_json=$(bunx -p json5 bun -e "
 const fs = require('fs');
 const JSON5 = require('json5');
 process.argv.slice(1).forEach(file => {
   try {
     console.log(JSON.stringify(JSON5.parse(fs.readFileSync(file, 'utf8'))));
-  } catch {
-    console.log('{}');
+  } catch (error) {
+    console.error('error: failed to parse ' + file + ': ' + error.message);
+    process.exitCode = 1;
   }
 });
 " $settings_files)
@@ -59,22 +61,18 @@ process.argv.slice(1).forEach(file => {
 
 # Merge all parsed JSON files using jq
 # The merge strategy is:
-#   1. Collect all permission arrays from all files and deduplicate
+#   1. Merge permissions: arrays (allow, ask, deny, ...) are unioned and deduplicated,
+#      scalars (defaultMode, ...) take the value from the later file
 #   2. Merge all other top-level keys (later values override earlier ones)
 #   3. Exclude the $schema field from the final output
 merged_json=$(echo "$parsed_json" | jq -s '
-    # First, build the permissions object by collecting arrays from all files
+    # First, build the permissions object from every file
     {
-        permissions: {
-            # Collect additionalDirectories from all files, flatten, and deduplicate
-            additionalDirectories: ([.[].permissions.additionalDirectories // [] | .[] ] | unique),
-
-            # Collect allow patterns from all files, flatten, and deduplicate
-            allow: ([.[].permissions.allow // [] | .[] ] | unique),
-
-            # Collect deny patterns from all files, flatten, and deduplicate
-            deny: ([.[].permissions.deny // [] | .[] ] | unique)
-        }
+        permissions: (reduce (.[].permissions // {} | to_entries[]) as $entry ({};
+            .[$entry.key] = if ($entry.value | type) == "array"
+                then ((.[$entry.key] // []) + $entry.value | unique)
+                else $entry.value
+                end))
     } *
     # Then merge all non-permissions top-level keys from all files
     # Later files override earlier files for conflicting keys

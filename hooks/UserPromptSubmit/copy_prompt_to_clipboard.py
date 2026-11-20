@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Copy each submitted prompt to the macOS clipboard for Raycast history.
+"""Copy user prompts to the macOS clipboard for Raycast history.
 
-This UserPromptSubmit hook mirrors every prompt into the system clipboard via
+This UserPromptSubmit hook copies user prompts to the system clipboard via
 ``pbcopy`` so it surfaces in Raycast's clipboard history — a searchable log of
 what was asked. Raw prompts are noisy, so the text is sanitized first: Claude
 Code paste/image markers are normalized, fenced code blocks are dropped, and
@@ -32,7 +32,7 @@ PBCOPY = "/usr/bin/pbcopy"
 LONG_LINE_CHARS = 400  # A single line longer than this collapses to "[Pasted]".
 MAX_CHARS = 8000  # Whole prompt longer than this keeps a bounded head.
 MAX_LINES = 150  # Whole prompt with more lines than this keeps a bounded head.
-MIN_CHARS = 120  # Sanitized prompts shorter than this are too trivial to log.
+MIN_CHARS = 50  # Sanitized prompts shorter than this are too trivial to log.
 SHORT_ID_CHARS = 8  # Length of the short session/ref id in the provenance prefix.
 MAX_LABEL_CHARS = 32  # Max length of the repo label in the provenance prefix.
 
@@ -191,7 +191,7 @@ def _git_output(cwd: Path, *args: str) -> str:
             text=True,
             timeout=1,
         ).strip()
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         return ""
 
 
@@ -256,6 +256,18 @@ def build_metadata_prefix(data: dict[str, Any]) -> str:
     return f"[{' '.join(parts)}]" if parts else ""
 
 
+def _should_skip_prompt_event(prompt: str, data: dict[str, Any]) -> bool:
+    """Skip delegated sessions and internal notifications before formatting."""
+    if data.get("agent_id"):
+        return True
+    transcript = data.get("transcript_path")
+    if isinstance(transcript, str):
+        path = Path(transcript)
+        if path.parent.name == "subagents" and path.name.startswith("agent-"):
+            return True
+    return bool(AGENT_NOTIFICATION_RE.match(_strip_terminal_controls(prompt)))
+
+
 def format_clipboard_prompt(prompt: str, data: dict[str, Any]) -> str:
     """Sanitize a prompt and prepend compact source metadata.
 
@@ -263,7 +275,7 @@ def format_clipboard_prompt(prompt: str, data: dict[str, Any]) -> str:
     metadata prefix doesn't count toward the floor — so trivial one-liners don't
     flood clipboard history.
     """
-    if AGENT_NOTIFICATION_RE.match(_strip_terminal_controls(prompt)):
+    if _should_skip_prompt_event(prompt, data):
         return ""
 
     text = sanitize_prompt(prompt)
@@ -302,6 +314,8 @@ def main() -> None:
     prompt = data.get("prompt", "")
     if not isinstance(prompt, str):
         sys.exit(0)
+    if _should_skip_prompt_event(prompt, data):
+        sys.exit(0)
 
     try:
         text = format_clipboard_prompt(prompt, data)
@@ -322,6 +336,7 @@ def main() -> None:
             encoding="utf-8",
             capture_output=True,
             timeout=5,
+            check=False,
         )
     except (OSError, subprocess.SubprocessError) as e:
         print(f"Warning: pbcopy failed: {e}", file=sys.stderr)

@@ -12,7 +12,9 @@ The `settings.json` file is automatically generated from modular JSONC source fi
 - `settings/basics.jsonc` - Basic configuration, environment, status line
 - `settings/hooks.jsonc` - Event hooks configuration
 - `settings/plugins.jsonc` - Enabled plugins
-- `settings/permissions/*.jsonc` - Permission rules organized by category
+- `settings/permissions/*.jsonc` - Permission settings organized by category. Do not add deny or ask rules for Bash,
+  Edit, or Read: one such rule brings back Claude Code's prompt for dangerous `rm` commands. Add the restriction to a
+  `PreToolUse` guard instead (see [hooks/README.md](../hooks/README.md))
 
 ### Generated File (don't edit)
 
@@ -31,9 +33,11 @@ The `settings.json` file is automatically regenerated:
 The merge script (`helpers/merge_settings.sh`):
 
 1. Discovers all `.jsonc` and `.json` files in `settings/` (sorted alphabetically)
-2. Parses JSONC to JSON (strips comments, allows trailing commas)
+2. Parses JSONC to JSON (strips comments, allows trailing commas); a file that fails to parse aborts the run with an
+   error naming it on stderr and a non-zero exit, leaving `settings.json` untouched
 3. Merges with special handling:
-   - **Permissions arrays**: Deduplicated across all files (`additionalDirectories`, `allow`, `deny`)
+   - **Permissions arrays**: Unioned and deduplicated across all files (`additionalDirectories`, `allow`, `ask`,
+     `deny`); scalar permission keys such as `defaultMode` follow the later-file-wins rule
    - **Other keys**: Later files override earlier files
    - **Schema field**: Removed from output
 4. Writes merged JSON to `settings.json`

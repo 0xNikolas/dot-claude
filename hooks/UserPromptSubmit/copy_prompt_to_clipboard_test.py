@@ -1,15 +1,13 @@
-#!/usr/bin/env python3
 """Unit tests for copy_prompt_to_clipboard.py hook."""
 
 import json
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
+import copy_prompt_to_clipboard as hook
 import pytest
 
-import copy_prompt_to_clipboard as hook
-
-# A prompt that survives sanitization unchanged and clears MIN_CHARS (120), so it
+# A prompt that survives sanitization unchanged and clears MIN_CHARS, so it
 # exercises the copy path rather than the short-prompt floor.
 LONG_PROMPT = (
     "Please review the authentication refactor and confirm the session handling, "
@@ -164,9 +162,11 @@ class TestMetadataPrefix:
         """Test non-git directories still get a short stable reference."""
         data = {"cwd": "/tmp/work/demo"}
 
-        with patch.object(hook, "_git_output", return_value=""):
-            with patch.object(hook, "_path_reference", return_value="deadbeef"):
-                assert hook.build_metadata_prefix(data) == "[repo:demo ref:deadbeef]"
+        with (
+            patch.object(hook, "_git_output", return_value=""),
+            patch.object(hook, "_path_reference", return_value="deadbeef"),
+        ):
+            assert hook.build_metadata_prefix(data) == "[repo:demo ref:deadbeef]"
 
     def test_formats_clipboard_prompt_with_metadata(self):
         """Test formatter prepends metadata to sanitized prompt."""
@@ -233,13 +233,15 @@ class TestMain:
         mock_stdin.write(json.dumps({"prompt": LONG_PROMPT}))
         mock_stdin.seek(0)
 
-        with patch.object(
-            hook,
-            "build_metadata_prefix",
-            return_value="[repo:demo session:00893aaf]",
+        with (
+            patch.object(
+                hook,
+                "build_metadata_prefix",
+                return_value="[repo:demo session:00893aaf]",
+            ),
+            pytest.raises(SystemExit) as exc_info,
         ):
-            with pytest.raises(SystemExit) as exc_info:
-                hook.main()
+            hook.main()
 
         assert exc_info.value.code == 0
         mock_run.assert_called_once()
@@ -254,13 +256,15 @@ class TestMain:
         mock_stdin.write(json.dumps({"prompt": LONG_PROMPT}))
         mock_stdin.seek(0)
 
-        with patch.object(
-            hook,
-            "build_metadata_prefix",
-            return_value="[repo:demo session:00893aaf]",
+        with (
+            patch.object(
+                hook,
+                "build_metadata_prefix",
+                return_value="[repo:demo session:00893aaf]",
+            ),
+            pytest.raises(SystemExit),
         ):
-            with pytest.raises(SystemExit):
-                hook.main()
+            hook.main()
 
         assert capsys.readouterr().out == ""
 
@@ -271,9 +275,11 @@ class TestMain:
         mock_stdin.write(json.dumps({"prompt": "   "}))
         mock_stdin.seek(0)
 
-        with patch.object(hook, "build_metadata_prefix") as mock_prefix:
-            with pytest.raises(SystemExit) as exc_info:
-                hook.main()
+        with (
+            patch.object(hook, "build_metadata_prefix") as mock_prefix,
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            hook.main()
 
         assert exc_info.value.code == 0
         mock_run.assert_not_called()
@@ -359,13 +365,15 @@ class TestMain:
         mock_stdin.write(json.dumps({"prompt": LONG_PROMPT}))
         mock_stdin.seek(0)
 
-        with patch.object(
-            hook,
-            "build_metadata_prefix",
-            return_value="[repo:demo session:00893aaf]",
+        with (
+            patch.object(
+                hook,
+                "build_metadata_prefix",
+                return_value="[repo:demo session:00893aaf]",
+            ),
+            pytest.raises(SystemExit) as exc_info,
         ):
-            with pytest.raises(SystemExit) as exc_info:
-                hook.main()
+            hook.main()
 
         assert exc_info.value.code == 0
 
@@ -377,13 +385,15 @@ class TestMain:
         mock_stdin.write(json.dumps({"prompt": LONG_PROMPT}))
         mock_stdin.seek(0)
 
-        with patch.object(
-            hook,
-            "build_metadata_prefix",
-            return_value="[repo:demo session:00893aaf]",
+        with (
+            patch.object(
+                hook,
+                "build_metadata_prefix",
+                return_value="[repo:demo session:00893aaf]",
+            ),
+            pytest.raises(SystemExit) as exc_info,
         ):
-            with pytest.raises(SystemExit) as exc_info:
-                hook.main()
+            hook.main()
 
         assert exc_info.value.code == 0
 
@@ -395,14 +405,58 @@ class TestMain:
         mock_stdin.write(json.dumps({"prompt": LONG_PROMPT}))
         mock_stdin.seek(0)
 
-        with patch.object(
-            hook,
-            "build_metadata_prefix",
-            side_effect=RuntimeError("boom"),
+        with (
+            patch.object(
+                hook,
+                "build_metadata_prefix",
+                side_effect=RuntimeError("boom"),
+            ),
+            pytest.raises(SystemExit) as exc_info,
         ):
-            with pytest.raises(SystemExit) as exc_info:
-                hook.main()
+            hook.main()
 
         assert exc_info.value.code == 0
         assert mock_run.call_args.kwargs["input"] == LONG_PROMPT
         assert "Warning: metadata prefix failed" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        {"agent_id": "child", "agent_type": "Explore"},
+        {"transcript_path": "/tmp/session/subagents/agent-child.jsonl"},
+    ],
+)
+def test_subagent_prompt_never_reaches_clipboard_or_fallback(metadata):
+    data = {"prompt": LONG_PROMPT, **metadata}
+    with (
+        patch.object(hook, "build_metadata_prefix") as prefix,
+        patch.object(hook.subprocess, "run") as pbcopy,
+    ):
+        assert hook.format_clipboard_prompt(LONG_PROMPT, data) == ""
+        prefix.assert_not_called()
+        with (
+            patch.object(hook.sys, "stdin", StringIO(json.dumps(data))),
+            patch.object(
+                hook, "format_clipboard_prompt", side_effect=RuntimeError("boom")
+            ) as formatter,
+            pytest.raises(SystemExit) as result,
+        ):
+            hook.main()
+        assert result.value.code == 0
+        formatter.assert_not_called()
+        pbcopy.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        {},
+        {"agent_type": "security-reviewer"},
+        {"agent_id": None, "transcript_path": "/tmp/session.jsonl"},
+        {"agent_id": "", "transcript_path": "/tmp/agent-project/session.jsonl"},
+    ],
+)
+def test_user_prompt_survives_agent_profile_and_empty_agent_id(metadata):
+    with patch.object(hook, "build_metadata_prefix", return_value=""):
+        assert hook.format_clipboard_prompt(LONG_PROMPT, metadata) == LONG_PROMPT

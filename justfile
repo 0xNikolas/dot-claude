@@ -10,6 +10,12 @@ set unstable
 # Bun: https://bun.sh
 bun := require("bun")
 
+# fd: https://github.com/sharkdp/fd
+fd := require("fd")
+
+# jq: https://jqlang.org
+jq := require("jq")
+
 # UV: https://github.com/astral-sh/uv
 uv := require("uv")
 
@@ -48,29 +54,17 @@ install-utils:
 #                                   HELPERS                                    #
 # ---------------------------------------------------------------------------- #
 
-# Add Bash permission to project's local Claude settings (run from project dir)
-[no-cd]
-[group("helpers")]
-@allow-bash:
-    uv run helpers/allow_all_bash.py
-alias ab := allow-bash
-
-# Clean ~/.claude.json by removing conversation history
-[group("helpers")]
-@cleanup:
-    uv run helpers/cleanup.py
-
 # Merge JSONC settings files into settings.json
 [group("helpers")]
 @merge-settings:
-    gum spin --spinner dot --title "Merging JSONC settings..." -- bash -c './helpers/merge_settings.sh'
+    gum spin --spinner dot --show-error --title "Merging JSONC settings..." -- bash -c './helpers/merge_settings.sh'
 alias ms := merge-settings
 
-# Sync a section from template across projects (default: ## Lint Rules)
+# Diff settings.json against the settings/ sources (exit 1 on drift)
 [group("helpers")]
-sync-section section="":
-    uv run helpers/sync_context_section.py --section "{{ section }}"
-alias ss := sync-section
+@settings-drift *args:
+    ./helpers/settings_drift.sh {{ args }}
+alias sd := settings-drift
 
 # ---------------------------------------------------------------------------- #
 #                                    CHECKS                                    #

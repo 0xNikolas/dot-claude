@@ -22,7 +22,7 @@ See [Installation](#installation) for full setup and [Configuration](#configurat
 
 - **Bun**: JS dependencies and Husky/lint-staged automation (`bun install`)
 - **Just**: command runner for build scripts (`brew install just`)
-- **Python 3.13+** and [uv](https://github.com/astral-sh/uv): Python package/project manager
+- **Python 3.15+** and [uv](https://github.com/astral-sh/uv): Python package/project manager
 
 ### Setup
 
@@ -44,17 +44,27 @@ claude           # Run Claude
 
 ### Settings
 
-All JSONC files in `settings/*` merge into `settings.json` on commit via Husky + lint-staged.
+All JSONC files in `settings/*` merge into `settings.json` on commit via Husky + lint-staged, and after any pull, merge,
+or rebase that changes `settings/` (Husky `post-merge` and `post-rewrite`).
 
-Edit only `settings/**/*.jsonc` (never `settings.json` directly). Merging happens on commit, or run
+Edit only `settings/**/*.jsonc` (never `settings.json` directly). Merging happens automatically, or run
 `just merge-settings` manually.
+
+Run `just settings-drift` to compare `settings.json` with the sources. The recipe merges `settings/` in a temporary
+directory and prints a diff grouped by top-level key. Lines marked `-` exist only in `settings.json`. Lines marked `+`
+exist only in the sources. It exits 1 on drift and 0 when clean. Run `just settings-drift --self-test` to test the
+recipe against fixtures.
+
+When drift shows a change made outside the sources, port the change into the owning `settings/*.jsonc` file. Then rerun
+`just settings-drift`. Do this before `just merge-settings`, because the merge overwrites `settings.json`.
 
 Settings layout:
 
 - `basics.jsonc`: core config, env vars, status line
 - `hooks.jsonc`: event hooks
 - `plugins.jsonc`: enabled plugins
-- `permissions/*.jsonc`: permission rules (additional-dirs, bash, read)
+- `permissions/*.jsonc`: additional directories. Deny and ask rules for Bash, Edit, and Read live in `PreToolUse` guards
+  instead, since one such rule brings back the prompt for dangerous `rm` commands
 
 ### Context
 
@@ -73,13 +83,13 @@ command list.
 ### Commands
 
 `commands/` contains thin entry points that invoke skills. Commands still matter because they support directory nesting,
-which enables namespaced patterns like `/yeet:issue-cc` and `/agents-brain:polish`.
+which enables namespaced patterns like `/yeet:create-pr` and `/agents-brain:maintain`.
 
 ### Skills
 
-Skills are managed in [0xNikolas/dot-agents](https://github.com/0xNikolas/dot-agents) and installed via Vercel's
-[skills CLI](https://github.com/vercel-labs/skills). This repo keeps symlinks from `skills/` to `~/.agents/skills/`. See
-dot-agents for installation guidance.
+Skills are authored in `~/projects/agent-skills` and installed by its `publish-skills` workflow into `~/.agents/skills`,
+with `~/.claude/skills/<name>` symlinked to those installs — except Claude-only skills, which are installed as real
+directories here. External skills (e.g. `find-skills`) come from `~/.agents`.
 
 Examples: **agents-brain**, **commit**, **vitest**, **effect-ts**, **cli-gh**, **tool-finder**, **yeet**.
 
@@ -89,7 +99,7 @@ Examples: **agents-brain**, **commit**, **vitest**, **effect-ts**, **cli-gh**, *
 
 ### MCP servers
 
-MCP servers are configured in `.mcp.json` (currently none).
+MCP servers are user-scope entries in `~/.claude.json` (currently `chrome-devtools` and `serena`), not tracked here.
 
 ### Hooks
 
@@ -99,12 +109,17 @@ Active hooks from `settings/hooks.jsonc`:
 
 - **add_plan_frontmatter.py**: add YAML frontmatter to plan files (`PostToolUse`)
 - **ai-coord**: agent coordination via the external
-  [ai-coord](https://github.com/0xNikolas/agent-toolkit/tree/main/coord) CLI (`PostToolBatch`, `PostToolUseFailure`,
-  `SessionEnd`, `SessionStart`, `Stop`, `SubagentStart`, `SubagentStop`, `UserPromptSubmit`)
+  [ai-coord](https://github.com/0xNikolas/agent-skills/tree/main/toolkit/coord) CLI (`PostToolBatch`, `PostToolUse`,
+  `PostToolUseFailure`, `SessionEnd`, `SessionStart`, `Stop`, `SubagentStart`, `SubagentStop`, `UserPromptSubmit`)
 - **ai-notify**: desktop notifications via the external
-  [ai-notify](https://github.com/0xNikolas/agent-toolkit/tree/main/notify) CLI (`Notification`, `PermissionRequest`,
-  `PreToolUse`, `Stop`, `StopFailure`, `UserPromptSubmit`)
+  [ai-notify](https://github.com/0xNikolas/agent-skills/tree/main/toolkit/notify) CLI (`Notification`, `PreToolUse`,
+  `Stop`, `StopFailure`, `UserPromptSubmit`)
+- **command_guard.py**: deny system-level commands such as `sudo`, `dd`, and `kill -9` (`PreToolUse`)
 - **copy_prompt_to_clipboard.py**: copy submitted prompts to the macOS clipboard (`UserPromptSubmit`)
+- **git_guard.py**: deny shared-worktree git sweeps and ask before force pushes, with options in any order
+  (`PreToolUse`)
+- **guard_rm.py**: deny recursive `rm` of system, home-level, and git repository directories (`PreToolUse`)
+- **path_guard.py**: deny reads and edits of secrets and user-owned files (`PreToolUse`)
 
 ### Plugins
 
@@ -120,7 +135,7 @@ Shell utilities are maintained in the chezmoi-managed `~/.config/prb/agents.sh` 
 - **`ccs [args]`**: commit only staged changes
 - **`ccsp [args]`**: commit staged changes and push
 - **`ccbump [args]`**: quick release bumping via `/release-bumper`
-- **`ccta [args]`**: archive TODOs via `$todo-archive`
+- **`ccta [args]`**: archive TODOs by running the `todo-archive` skill's `archive_todo.py` directly
 
 ## License
 
